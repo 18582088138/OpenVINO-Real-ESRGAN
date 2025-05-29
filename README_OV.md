@@ -65,3 +65,7 @@ python inference_realesrgan.py -n RealESRGAN_x4plus -i inputs/0014.jpg -o output
 | `--ext`            | Image extension (`auto`, `jpg`, `png`). `auto` uses the same extension as inputs. | `auto`        |
 | `-ov`, `--openvino` | Use OpenVINO to optimize performance.                                     | `True`        |
 | `--ov_device`      | OpenVINO development device (`CPU`, `GPU`). `GPU` means uses Intel Core iGPU.    | `CPU`         |
+
+## Result
+
+![OpenVINO and Pytorch result compare](inputs/RealESGAN_result_compare.jpg)
