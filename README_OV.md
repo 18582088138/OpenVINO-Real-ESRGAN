@@ -46,7 +46,7 @@ You can use the X4 model for arbitrary output sizes with the `outscale` argument
 
 #### Example Command
 ```bash
-python inference_realesrgan.py -n RealESRGAN_x4plus -i inputs/0014.jpg -o outputs/ov -ov True --ov_device CPU
+python inference_realesrgan.py -n RealESRGAN_x4plus -i inputs/0014.jpg -o outputs/ov -ov True --ov_device GPU
 ```
 
 #### Command-Line Options
