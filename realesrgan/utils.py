@@ -8,6 +8,9 @@ import torch
 from basicsr.utils.download_util import load_file_from_url
 from torch.nn import functional as F
 
+import openvino as ov
+core = ov.Core()
+
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
@@ -34,9 +37,12 @@ class RealESRGANer():
                  tile=0,
                  tile_pad=10,
                  pre_pad=10,
-                 half=False,
+                 half=True,#False,
                  device=None,
-                 gpu_id=None):
+                 gpu_id=None,
+                 openvino=True,
+                 ov_device="CPU",
+                ):
         self.scale = scale
         self.tile_size = tile
         self.tile_pad = tile_pad
@@ -73,6 +79,34 @@ class RealESRGANer():
         self.model = model.to(self.device)
         if self.half:
             self.model = self.model.half()
+
+        self.openvino = openvino
+        self.ov_device = ov_device
+        if self.openvino:
+            self.ov_init()
+
+    def ov_init(self):
+        self.ov_model_path = "./RealESRGAN_x4plus_fp16.xml"
+        if os.path.exists(self.ov_model_path):
+            self.ov_model = core.compile_model(self.ov_model_path, self.ov_device)
+            print("[OV init] Done")
+        else:
+            self.ov_model  = None
+
+    def ov_model_convert(self):
+        torch_model = self.model
+        ov_input = {"x":self.img}
+        ov_model = ov.convert_model(torch_model,example_input=ov_input)
+        ov.save_model(ov_model, self.ov_model_path)
+        print("[OV convert] Done")
+
+    def ov_model_infer(self):
+        if not self.ov_model:
+            self.ov_model_convert()
+            self.ov_init()
+        real_esrgan_x4plus_fp16_out = self.ov_model(self.img)
+        self.output = torch.from_numpy(real_esrgan_x4plus_fp16_out[0])
+        print("[OV Inference] Done")
 
     def dni(self, net_a, net_b, dni_weight, key='params', loc='cpu'):
         """Deep network interpolation.
@@ -112,7 +146,10 @@ class RealESRGANer():
 
     def process(self):
         # model inference
-        self.output = self.model(self.img)
+        if self.openvino:
+            self.ov_model_infer()
+        else:
+            self.output = self.model(self.img)
 
     def tile_process(self):
         """It will first crop input images to tiles, and then process each tile.
@@ -191,7 +228,7 @@ class RealESRGANer():
         return self.output
 
     @torch.no_grad()
-    def enhance(self, img, outscale=None, alpha_upsampler='realesrgan'):
+    def enhance(self, img, outscale=None, alpha_upsampler='realesrgan', openvino=False, ov_device="CPU"):
         h_input, w_input = img.shape[0:2]
         # img: numpy
         img = img.astype(np.float32)
